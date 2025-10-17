@@ -1,0 +1,201 @@
+OSU TIDAL PREDICTION Software for NETCDF format (OTPSnc)
+=====================================================================
+AUTHORS:
+  Gary Egbert & Lana Erofeeva
+  College of Atmospheric and Oceanic Sciences
+  104 COAS Admin. Bldg.
+  Oregon State University
+  Corvallis, OR 97331-5503
+  
+  E-mail:  egbert@coas.oregonstate.edu
+           https://www.tpxo.net/
+
+COPYRIGHT: OREGON STATE UNIVERSITY, 2010
+(see the file COPYRIGHT for license agreement)
+=====================================================================
+OTPSnc UPDATES 2020
+- fully consistent with OTPS, except no extract_local_model
+  functionality;
+- allows both for single multi-constituent files and for multiple 
+  single-constituent TPXO9-atlas files;
+- new load file obtained from TPXO9 included;
+- reads only needed elements of elevation/transport fields as opposed to 
+  reading whole arrays in the previous versiosn; thus outputs results 
+  in seconds and does not require huge RAM for atlas case.
+******************************************************************************
+1. INTRODUCTION
+
+OTPSnc accomplishes 2 tasks:
+- extracting harmonic constants from a barotropic tidal solution
+  in OTPSnc binary format (see below) at given locations - extract_HC;
+
+- predicting tides at given times and locations from any local,
+  global or atlas solution given in OTPSnc netcdf format - predict_tide;
+
+Global, regional and global-atlas barotropic inverse solutions in netcdf format
+are available for download at:
+
+  https://www.tpxo.net/
+
+******************************************************************************
+2. OTPSnc NETCDF FORMAT
+
+Our models consist of 3 components: tidal elevations, transports and
+bathymetry grid. To see whole content of any file, please use standard: 
+ncdump -h
+
+Elevations (h) and transports/currents are given as complex amplitudes,
+so that the partial tide for a single constituent of frequency w is given by
+
+     h(t,x) = Re [ h(x) exp { i [w (t - t0) + V0(t0)] } ]
+
+where V0(t0) is the astronomical argument for the constituent at t0.
+Note that with the usual conventions, amplitude and phase are given
+by    amp = | h |    phase = atan (-Im(h)/Re(h)) .
+
+******************************************************************************
+3. Arakawa C-GRID
+
+There are "n" divisions in longitude, "m" in latitude. The elevations
+and transports are given on a C-grid. Elevation nodes are at the grid
+cell center. U nodes are at the center of left (east) side, and
+V nodes are at the center of bottom (south) side of grid cells.
+Then lats and lons (in degrees) for individual grid nodes are:
+
+The lats and lons (in degrees) for individual grid nodes are:
+
+For h-nodes   lat(i,j) =  theta_lim(1) + (j-.5)*dy
+              lon(i,j) =  phi_lim(1) + (i-.5)*dx
+
+For U-nodes:  lat(i,j) =  theta_lim(1) + (j-.5)*dy
+              lon(i,j) =  phi_lim(1) + (i- 1)*dx
+
+For V-nodes:  lat(i,j) =  theta_lim(1) + (j- 1)*dy
+              lon(i,j) =  phi_lim(1) + (i-.5)*dx
+
+Here dx,dy is resolution in longitude and latitude correspondingly.
+Most of our solutions are given on C grids uniform in lats,lons, but
+some of them (i.e. Arctic solutions) are given on C grids uniform in
+kilometers. The OTPSnc is applicable for these solutions also.
+
+******************************************************************************
+4. SETUP file "setup.inp"
+
+This is an example of the input file for extract_HC and predict_tide,
+included with OTPSnc. You can change the file name and edit for your
+path, input file names, and parameter values.
+
+DATA/Model_tpxo9v2a        ! 1. tidal model control file
+lat_lon_time               ! 2. latitude/longitude/time file
+z                          ! 3. z/U/V/u/v
+m2,s2,n2,k2,k1,o1,p1,q1    ! 4. tidal constituents to include
+AP                         ! 5. AP/RI
+oce                        ! 6. oce/geo
+1                          ! 7. 1/0 correct for minor constituents
+tmp                        ! 8. output file (ASCII)
+
+
+Comments on lines 1-7
+
+1. Tidal model control file (ASCII, supplied with the model, starting
+   from "Model_") contains AT LEAST 3 lines:
+
+   elevation model file name
+   transport model file name
+   bathymetry grid file name
+   {name of function to convert x,y to lon,lat}
+
+   Please show FULL path to the model files in the "Model_*" file
+   unless they are located in /DATA (download default).
+
+   4th line in Model_* file is used ONLY for models calculated on
+   uniform grid in km. Converting functions are provided with 
+   current version of OTPSnc. Try upgrading OTPSnc if a function is
+   missing.
+
+   Control file for TPXO9-atlas includes 3 lines with file names
+   with wild card (i.e. * ) instead of constituents names. 
+   Sample file DATA/Model_tpxo9_atlas_v2
+   is included with OTPSnc and looks like:
+
+   DATA/TPXO9_atlas_v2/h_*_tpxo9_atlas_30_v2
+   DATA/TPXO9_atlas_v2/u_*_tpxo9_atlas_30_v2
+   DATA/TPXO9_atlas_v2/grid_tpxo9_atlas_30_v2
+
+2. latitude, longitude and time file is an ASCII file, consisting 
+   eighter of 2 OR 8 columns:
+   latitude (degrees) longitude (degrees) [yyyy mm dd hh mm ss]
+   Common sign convention:
+   lat>0 - degrees North, lon>0 - degrees East
+   lat<0 - degrees South, lon<0 - degrees West
+   [yyyy mm dd hh mm ss] - year month day hour seconds GMT
+   These 6 columns are needed for tide predictions only.
+   You may leave them empty if only extracting HC.
+   If you want tidal predictions at the same times, but different locations,
+   you may also provide only 2 columns lat_lon file. BUT then you have to
+   provide also 6 column "time" file, consisting of times, given as
+    yyyy mm dd hh mm ss
+   In this case predict_tide usage will be:
+
+   predict_tide -ttime_file<setup.inp
+
+   This option is useful, if you want to obtain time series at open 
+   boundary nodes.
+   
+3. Extract HC/predict tide for:
+   z/U/V/u/v - elevation(m) /WE transport(m^2/s)/ SN transport(m^2/s)/
+                             WE velocity (cm/s) / SN velocity (cm/s)
+   NOTE: Changed, Nov 2004: now for any of u/v/U/V all components
+         (that is U V u v) are calculated by predict_tide.
+
+4. Constituent names should be in LOWER case and separated by comma.
+   Leave the line blank, if ALL model constituents are included
+
+5. AP/RI - output amplitude and phase(GMT) OR real/imaginary parts.
+           Only used when extracting HC.
+           May leave blank, if predicting tide.
+
+6. Only needed for tide prediction. 1/0 - Do/Not correct for the minor
+   constituents defined in weights.h. Only works if the 8 tidal constituents
+   fields are in the model: m2,s2,n2,k2,k1,o1,p1,q1
+
+7. oce/geo - extract ocean/geocentric HC for elevations only.
+             Geocentric tide is appropriate for comparison to or
+             correction of altimetry data.
+             May leave blank if not z on line 3.
+
+******************************************************************************
+5. OTHER input files
+
+   extract_HC - you need lat_lon file (example is provided);
+   predict_tide - you need lat_lon_time file (example is provided) OR
+                  lat_lon and time file; sample matlab script mk_lltime.m
+                  creating lat_lon_time file, is provided in OTPSnc/matlab
+   
+6. COMPILING and RUNNING OTPSnc
+
+YOU HAVE TO INSTALL NETCDF and NETCDFF LIBRARIES prior to compiling.
+
+Example of makefile for gfortran compiler is provided with OTPSnc.
+Please edit for your local netcdf pathes.
+
+To compile:
+
+make extract_HC
+make predict_tide
+
+AFTER compiling successfully and editing Model_* files for your path,
+editing setup.inp, creating your own input files 
+run executable as:
+
+extract_HC<setup.inp
+predict_tide<setup.inp
+
+Examples of setup.inp, input file and DATA/Model_* control files 
+are included with OTPSnc.
+
+******************************************************************************
+Contacts:  Gary Egbert:   Gary.Egbert@oregonstate.edu
+           Lana Erofeeva: Svetlana.Erofeeva@oregonstate.edu
+
+

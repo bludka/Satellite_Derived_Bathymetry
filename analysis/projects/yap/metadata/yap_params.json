@@ -1,0 +1,17 @@
+{
+    "reef_name": "yap",
+    "sentinel_start_date": "20190101",
+    "sentinel_end_date": "20210501",
+    "download_is2": false,
+    "download_sentinel": false,
+    "earthdata_username": "bludka",
+    "earthdata_password": "Gnidlaps10!",
+    "sentinel_username": "bludka",
+    "sentinel_password": "Gnidlaps10!",
+    "world_tide_API_key": "fee8ff39-48eb-42a7-bcc5-3819fce3c1e4",
+    "sentinel_cloud_cover_percentage": [
+        0,
+        10
+    ],
+    "num_sentinel_imgs": 0
+}
